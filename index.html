@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SO ARM-101 Challenge Leaderboard</title>
+    <!-- Google Fonts for Poster Vibe -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Confetti Library for Grand Prize Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: #131b2e;
+            --accent-yellow: #facc15;
+            --accent-glow: rgba(250, 204, 21, 0.3);
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-image: radial-gradient(circle at 50% 20%, #1e293b 0%, var(--bg-color) 70%);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 3px solid var(--accent-yellow);
+            padding-bottom: 15px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .tagline {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            color: var(--accent-yellow);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            text-shadow: 0 0 20px rgba(250, 204, 21, 0.4);
+        }
+
+        .platform-tag {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1.1fr 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 2px solid #1e293b;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Rules Box inside Timer Card */
+        .rules-badge {
+            background-color: rgba(250, 204, 21, 0.08);
+            border-left: 4px solid var(--accent-yellow);
+            padding: 10px 14px;
+            width: 100%;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .rules-badge strong {
+            color: var(--accent-yellow);
+        }
+
+        /* Timer Section */
+        .timer-display {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 5.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+            color: var(--accent-yellow);
+            text-shadow: 0 0 15px var(--accent-glow);
+            letter-spacing: 2px;
+        }
+
+        .status-msg {
+            font-size: 1.1rem;
+            min-height: 25px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 900;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            letter-spacing: 1px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* Giant Main Action Button */
+        .btn-main {
+            width: 100%;
+            font-size: 1.5rem;
+            padding: 24px;
+            background-color: var(--success);
+            color: #0b0f19;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+        .btn-main:hover { background-color: #059669; }
+
+        /* State when active (acting as Stop/Done) */
+        .btn-main.running {
+            background-color: var(--accent-yellow);
+            color: #0b0f19;
+            box-shadow: 0 6px 20px rgba(250, 204, 21, 0.3);
+            animation: pulse-glow 1.5s infinite;
+        }
+        .btn-main.running:hover { background-color: #eab308; }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(250, 204, 21, 0.6); }
+            100% { box-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
+        }
+
+        .btn-reset {
+            background-color: #334155;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            padding: 12px;
+        }
+        .btn-reset:hover {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        /* Highscore Section */
+        .highscore-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 10px;
+        }
+
+        .highscore-header h2 {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: var(--accent-yellow);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 5px;
+            font-family: 'Montserrat', sans-serif;
+            box-shadow: none;
+            font-weight: 700;
+        }
+        .clear-btn:hover { color: var(--danger); }
+
+        .score-list {
+            width: 100%;
+            list-style: none;
+            max-height: 310px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            background-color: #0b0f19;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            border: 1px solid #1e293b;
+        }
+
+        .score-item.record-holder {
+            border: 2px solid var(--accent-yellow);
+            background-color: rgba(250, 204, 21, 0.05);
+        }
+
+        .rank {
+            font-family: 'Share Tech Mono', monospace;
+            font-weight: bold;
+            color: var(--text-muted);
+            width: 35px;
+            font-size: 1.1rem;
+        }
+
+        .player-name {
+            flex-grow: 1;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding-right: 10px;
+        }
+
+        .player-time {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
+
+        .no-scores {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 30px 0;
+            font-style: italic;
+            font-size: 0.95rem;
+        }
+
+        /* Modal Overlay */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background-color: var(--panel-bg);
+            padding: 30px;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            border: 2px solid var(--accent-yellow);
+        }
+
+        .modal-content h3 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            margin-bottom: 12px;
+            color: var(--accent-yellow);
+            text-transform: uppercase;
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            border-radius: 8px;
+            border: 2px solid #334155;
+            background-color: #0b0f19;
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-yellow);
+        }
+
+        .modal-btn {
+            background-color: var(--accent-yellow);
+            color: #0b0f19;
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+        }
+        .modal-btn:hover { background-color: #eab308; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="tagline">Hugging Face Open Source Robot Platform</div>
+        <h1>SO ARM-101 Challenge</h1>
+        <div class="platform-tag">Build a Great Tower to Win &bull; Beat the Clock</div>
+    </header>
+
+    <div class="container">
+        <!-- Timer Card -->
+        <div class="card">
+            <div class="rules-badge">
+                🎯 <strong>Goal:</strong> Stack 3 Jenga bricks as a tower using the robot arm. Finish under <strong>60 seconds</strong> for a participation prize!
+            </div>
+            
+            <div class="status-msg" id="statusMsg">Ready to start?</div>
+            <div class="timer-display" id="timerDisplay">00.0s</div>
+            
+            <div class="controls">
+                <button class="btn-main" id="mainBtn" onclick="handleMainButtonClick()">START CHALLENGE</button>
+                <button class="btn-reset" id="resetBtn" onclick="resetTimer()" style="display: none;">Cancel / Reset</button>
+            </div>
+        </div>
+
+        <!-- Highscore Card -->
+        <div class="card" style="align-items: stretch;">
+            <div class="highscore-header">
+                <h2>Leaderboard</h2>
+                <button class="clear-btn" onclick="clearScores()">Clear Scores</button>
+            </div>
+            <ul class="score-list" id="scoreList">
+                <li class="no-scores">No scores recorded yet tonight.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Save Score Modal -->
+    <div class="modal" id="saveModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Challenge Complete!</h3>
+            <p id="modalSubtext">You finished under 60 seconds and earned a <strong>Participation Award!</strong> Enter your name:</p>
+            <input type="text" id="playerName" placeholder="Enter Pilot Name" autocomplete="off">
+            <button class="modal-btn" onclick="saveScore()">Submit Score</button>
+        </div>
+    </div>
+
+    <script>
+        let startTime = 0;
+        let elapsedTime = 0;
+        let timerInterval = null;
+        let isRunning = false;
+        let hasFailed = false; // Track if the last run hit 60s
+        let finalTimeSec = 0;
+
+        const timerDisplay = document.getElementById('timerDisplay');
+        const mainBtn = document.getElementById('mainBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        const saveModal = document.getElementById('saveModal');
+        const playerNameInput = document.getElementById('playerName');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalSubtext = document.getElementById('modalSubtext');
+        const scoreList = document.getElementById('scoreList');
+
+        // Load scores from localStorage
+        let highScores = JSON.parse(localStorage.getItem('so_arm_challenge_scores')) || [];
+        renderScores();
+
+        function handleMainButtonClick() {
+            // If they just failed (reached 60s), clicking it clears the failure state and starts fresh
+            if (hasFailed) {
+                resetTimer();
+            }
+
+            if (!isRunning) {
+                // START THE TIMER
+                isRunning = true;
+                hasFailed = false;
+                startTime = Date.now() - elapsedTime;
+                
+                mainBtn.textContent = "DONE (STOP TIMER)";
+                mainBtn.classList.add('running');
+                resetBtn.style.display = 'block';
+                statusMsg.textContent = "Tower in progress...";
+                statusMsg.style.color = "var(--text-main)";
+
+                timerInterval = setInterval(() => {
+                    const currentTime = Date.now();
+                    elapsedTime = currentTime - startTime;
+                    let seconds = elapsedTime / 1000;
+
+                    if (seconds >= 60) {
+                        seconds = 60;
+                        timerDisplay.textContent = "60.0s";
+                        stopTimerDueToFailure();
+                        return;
+                    }
+
+                    timerDisplay.textContent = seconds.toFixed(1) + "s";
+                }, 100);
+            } else {
+                // STOP TIMER & OPEN SAVE MODAL (DONE)
+                openSaveModal();
+            }
+        }
+
+        function stopTimerDueToFailure() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            hasFailed = true; // Mark as failed so next click resets
+            
+            mainBtn.textContent = "START NEW CHALLENGE";
+            mainBtn.classList.remove('running');
+            resetBtn.style.display = 'none';
+            
+            statusMsg.textContent = "⏰ Time's up (60s limit)! Tap to try again!";
+            statusMsg.style.color = "var(--danger)";
+        }
+
+        function openSaveModal() {
+            if (!isRunning && elapsedTime === 0) return;
+            clearInterval(timerInterval);
+            isRunning = false;
+            hasFailed = false;
+
+            finalTimeSec = parseFloat((elapsedTime / 1000).toFixed(1));
+            
+            // Check if current score beats all-time lowest
+            let isAllTimeLow = false;
+            if (highScores.length === 0 || finalTimeSec < highScores[0].time) {
+                isAllTimeLow = true;
+            }
+
+            if (isAllTimeLow) {
+                modalTitle.textContent = "🏆 NEW GRAND PRIZE LEADER! 🏆";
+                modalSubtext.innerHTML = `Incredible work! <strong>${finalTimeSec}s</strong> is the fastest time of the night so far! You secured your <strong>Participation Award</strong> and lead for the <strong>Grand Prize</strong>!`;
+                
+                // Trigger celebratory confetti burst
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#facc15', '#ffffff', '#10b981']
+                });
+            } else {
+                modalTitle.textContent = "🎉 Target Reached! 🎉";
+                modalSubtext.innerHTML = `Finished in <strong>${finalTimeSec}s</strong>! You beat the 60-second limit and earned your <strong>Participation Award</strong>!`;
+            }
+
+            saveModal.style.display = 'flex';
+            playerNameInput.value = '';
+            playerNameInput.focus();
+        }
+
+        function saveScore() {
+            const name = playerNameInput.value.trim() || "Anonymous Pilot";
+            
+            highScores.push({ name: name, time: finalTimeSec });
+            highScores.sort((a, b) => a.time - b.time); // Lowest time first
+
+            localStorage.setItem('so_arm_challenge_scores', JSON.stringify(highScores));
+            
+            saveModal.style.display = 'none';
+            renderScores();
+            resetTimer();
+
+            statusMsg.textContent = "Score saved to leaderboard!";
+            statusMsg.style.color = "var(--success)";
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            hasFailed = false;
+            elapsedTime = 0;
+            timerDisplay.textContent = "00.0s";
+            
+            mainBtn.textContent = "START CHALLENGE";
+            mainBtn.classList.remove('running');
+            resetBtn.style.display = 'none';
+            
+            statusMsg.textContent = "Ready to start?";
+            statusMsg.style.color = "var(--text-main)";
+        }
+
+        function renderScores() {
+            if (highScores.length === 0) {
+                scoreList.innerHTML = `<li class="no-scores">No scores recorded yet tonight.</li>`;
+                return;
+            }
+
+            scoreList.innerHTML = '';
+            highScores.forEach((score, index) => {
+                const li = document.createElement('li');
+                li.className = 'score-item';
+                
+                if (index === 0) {
+                    li.classList.add('record-holder');
+                }
+
+                li.innerHTML = `
+                    <span class="rank">#${index + 1}</span>
+                    <span class="player-name">${escapeHtml(score.name)} ${index === 0 ? '👑' : ''}</span>
+                    <span class="player-time">${score.time.toFixed(1)}s</span>
+                `;
+                scoreList.appendChild(li);
+            });
+        }
+
+        function clearScores() {
+            if (confirm("Reset the leaderboard for the night?")) {
+                highScores = [];
+                localStorage.removeItem('so_arm_challenge_scores');
+                renderScores();
+                statusMsg.textContent = "Leaderboard reset.";
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+    </script>
+</body>
+</html>
