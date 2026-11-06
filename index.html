@@ -244,18 +244,27 @@
             letter-spacing: 1px;
         }
 
-        .clear-btn {
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .action-link-btn {
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             cursor: pointer;
-            padding: 5px;
+            padding: 4px 6px;
             font-family: 'Montserrat', sans-serif;
             box-shadow: none;
             font-weight: 700;
+            border-radius: 4px;
+            transition: background 0.2s;
         }
-        .clear-btn:hover { color: var(--danger); }
+        .action-link-btn:hover { background-color: #1e293b; color: var(--accent-yellow); }
+        .action-link-btn.danger:hover { color: var(--danger); }
 
         .score-list {
             width: 100%;
@@ -263,6 +272,28 @@
             max-height: 310px;
             overflow-y: auto;
             padding-right: 4px;
+            /* Custom Scrollbar Styling */
+            scrollbar-width: thin;
+            scrollbar-color: #334155 #0b0f19;
+        }
+
+        /* WebKit Scrollbar Styling (Chrome, Safari, Edge) */
+        .score-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .score-list::-webkit-scrollbar-track {
+            background: #0b0f19;
+            border-radius: 4px;
+        }
+
+        .score-list::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        .score-list::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-yellow);
         }
 
         .score-item {
@@ -347,14 +378,14 @@
 
         .modal-content p {
             margin-bottom: 20px;
-            font-size: 1rem;
-            line-height: 1.5;
+            font-size: 0.95rem;
+            line-height: 1.4;
         }
 
-        input[type="text"] {
+        input[type="text"], input[type="email"] {
             width: 100%;
-            padding: 15px;
-            font-size: 1.2rem;
+            padding: 14px;
+            font-size: 1.1rem;
             font-family: 'Montserrat', sans-serif;
             font-weight: 700;
             border-radius: 8px;
@@ -362,11 +393,11 @@
             background-color: #0b0f19;
             color: white;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             outline: none;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, input[type="email"]:focus {
             border-color: var(--accent-yellow);
         }
 
@@ -395,7 +426,7 @@
         <!-- Timer Card -->
         <div class="card">
             <div class="rules-badge">
-                🎯 <strong>Goal:</strong> Stack 3 Jenga bricks as a tower using the robot arm. Finish under <strong>60 seconds</strong> for a participation prize!
+                🎯 <strong>Goal:</strong> Stack 3 Jenga bricks as a tower using the robot arm. Participate for a chance to win!
             </div>
             
             <div class="status-msg" id="statusMsg">Ready to start?</div>
@@ -411,7 +442,10 @@
         <div class="card" style="align-items: stretch;">
             <div class="highscore-header">
                 <h2>Leaderboard</h2>
-                <button class="clear-btn" onclick="clearScores()">Clear Scores</button>
+                <div class="header-actions">
+                    <button class="action-link-btn" onclick="exportCSV()">📥 CSV</button>
+                    <button class="action-link-btn danger" onclick="clearScores()">Clear</button>
+                </div>
             </div>
             <ul class="score-list" id="scoreList">
                 <li class="no-scores">No scores recorded yet tonight.</li>
@@ -423,8 +457,9 @@
     <div class="modal" id="saveModal">
         <div class="modal-content">
             <h3 id="modalTitle">Challenge Complete!</h3>
-            <p id="modalSubtext">You finished under 60 seconds and earned a <strong>Participation Award!</strong> Enter your name:</p>
+            <p id="modalSubtext">Great job building the tower! Enter your details to participate for a chance to win:</p>
             <input type="text" id="playerName" placeholder="Enter Pilot Name" autocomplete="off">
+            <input type="email" id="playerEmail" placeholder="Enter Email (Optional)" autocomplete="off">
             <button class="modal-btn" onclick="saveScore()">Submit Score</button>
         </div>
     </div>
@@ -434,7 +469,6 @@
         let elapsedTime = 0;
         let timerInterval = null;
         let isRunning = false;
-        let hasFailed = false;
         let finalTimeSec = 0;
 
         const timerDisplay = document.getElementById('timerDisplay');
@@ -443,13 +477,14 @@
         const statusMsg = document.getElementById('statusMsg');
         const saveModal = document.getElementById('saveModal');
         const playerNameInput = document.getElementById('playerName');
+        const playerEmailInput = document.getElementById('playerEmail');
         const modalTitle = document.getElementById('modalTitle');
         const modalSubtext = document.getElementById('modalSubtext');
         const scoreList = document.getElementById('scoreList');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
 
         // Load scores from localStorage
-        let highScores = JSON.parse(localStorage.getItem('so_arm_challenge_scores')) || [];
+        let highScores = JSON.parse(localStorage.getItem('so_arm_challenge_scores_v3')) || [];
         renderScores();
 
         // Fullscreen toggle logic
@@ -465,7 +500,6 @@
             }
         }
 
-        // Update button text when fullscreen changes externally (e.g. pressing ESC)
         document.addEventListener('fullscreenchange', () => {
             if (document.fullscreenElement) {
                 fullscreenBtn.textContent = "⛶ Exit";
@@ -475,14 +509,8 @@
         });
 
         function handleMainButtonClick() {
-            if (hasFailed) {
-                resetTimer();
-            }
-
             if (!isRunning) {
-                // START THE TIMER
                 isRunning = true;
-                hasFailed = false;
                 startTime = Date.now() - elapsedTime;
                 
                 mainBtn.textContent = "DONE (STOP TIMER)";
@@ -496,39 +524,17 @@
                     elapsedTime = currentTime - startTime;
                     let seconds = elapsedTime / 1000;
 
-                    if (seconds >= 60) {
-                        seconds = 60;
-                        timerDisplay.textContent = "60.0s";
-                        stopTimerDueToFailure();
-                        return;
-                    }
-
                     timerDisplay.textContent = seconds.toFixed(1) + "s";
                 }, 100);
             } else {
-                // STOP TIMER & OPEN SAVE MODAL (DONE)
                 openSaveModal();
             }
-        }
-
-        function stopTimerDueToFailure() {
-            clearInterval(timerInterval);
-            isRunning = false;
-            hasFailed = true;
-            
-            mainBtn.textContent = "START NEW CHALLENGE";
-            mainBtn.classList.remove('running');
-            resetBtn.style.display = 'none';
-            
-            statusMsg.textContent = "⏰ Time's up (60s limit)! Tap to try again!";
-            statusMsg.style.color = "var(--danger)";
         }
 
         function openSaveModal() {
             if (!isRunning && elapsedTime === 0) return;
             clearInterval(timerInterval);
             isRunning = false;
-            hasFailed = false;
 
             finalTimeSec = parseFloat((elapsedTime / 1000).toFixed(1));
             
@@ -539,7 +545,7 @@
 
             if (isAllTimeLow) {
                 modalTitle.textContent = "🏆 NEW GRAND PRIZE LEADER! 🏆";
-                modalSubtext.innerHTML = `Incredible work! <strong>${finalTimeSec}s</strong> is the fastest time of the night so far! You secured your <strong>Participation Award</strong> and lead for the <strong>Grand Prize</strong>!`;
+                modalSubtext.innerHTML = `Incredible work! <strong>${finalTimeSec}s</strong> is the fastest time of the night so far! You are leading for the <strong>Grand Prize</strong>!`;
                 
                 confetti({
                     particleCount: 120,
@@ -548,22 +554,24 @@
                     colors: ['#facc15', '#ffffff', '#10b981']
                 });
             } else {
-                modalTitle.textContent = "🎉 Target Reached! 🎉";
-                modalSubtext.innerHTML = `Finished in <strong>${finalTimeSec}s</strong>! You beat the 60-second limit and earned your <strong>Participation Award</strong>!`;
+                modalTitle.textContent = "🎉 Tower Completed! 🎉";
+                modalSubtext.innerHTML = `Finished in <strong>${finalTimeSec}s</strong>! Enter your details to participate for a chance to win:`;
             }
 
             saveModal.style.display = 'flex';
             playerNameInput.value = '';
+            playerEmailInput.value = '';
             playerNameInput.focus();
         }
 
         function saveScore() {
             const name = playerNameInput.value.trim() || "Anonymous Pilot";
+            const email = playerEmailInput.value.trim() || "N/A";
             
-            highScores.push({ name: name, time: finalTimeSec });
+            highScores.push({ name: name, email: email, time: finalTimeSec });
             highScores.sort((a, b) => a.time - b.time);
 
-            localStorage.setItem('so_arm_challenge_scores', JSON.stringify(highScores));
+            localStorage.setItem('so_arm_challenge_scores_v3', JSON.stringify(highScores));
             
             saveModal.style.display = 'none';
             renderScores();
@@ -576,7 +584,6 @@
         function resetTimer() {
             clearInterval(timerInterval);
             isRunning = false;
-            hasFailed = false;
             elapsedTime = 0;
             timerDisplay.textContent = "00.0s";
             
@@ -612,12 +619,39 @@
             });
         }
 
+        function exportCSV() {
+            if (highScores.length === 0) {
+                alert("No scores to export yet!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,Rank,Name,Email,Time (Seconds)\n";
+            highScores.forEach((score, index) => {
+                const row = [index + 1, `"${score.name}"`, `"${score.email || 'N/A'}"`, score.time];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "so_arm_challenge_leaderboard.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function clearScores() {
-            if (confirm("Reset the leaderboard for the night?")) {
+            const pin = prompt("Enter PIN code to clear the leaderboard:");
+            if (pin === null) return; // Cancelled
+            
+            if (pin === "2727") {
                 highScores = [];
-                localStorage.removeItem('so_arm_challenge_scores');
+                localStorage.removeItem('so_arm_challenge_scores_v3');
                 renderScores();
                 statusMsg.textContent = "Leaderboard reset.";
+                statusMsg.style.color = "var(--text-main)";
+            } else {
+                alert("Incorrect PIN code!");
             }
         }
 
